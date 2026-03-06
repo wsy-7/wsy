@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>乙酰水杨酸AR虚仿实验教学平台</title>
+  <script src="https://cdn.tailwindcss.com/3.4.1"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.min.js"></script>
+  
+  <!-- ========== 资源路径配置（GitHub 直链） ==========
+  本地使用：留空或设为 ''，使用相对路径
+  GitHub 直链：设为 jsDelivr CDN 地址，例如：
+    https://cdn.jsdelivr.net/gh/你的用户名/仓库名@main/
+  或 raw 直链：
+    https://raw.githubusercontent.com/你的用户名/仓库名/main/
+  ================================================ -->
+  <script>
+    window.RESOURCE_BASE = '';  // 本地留空；GitHub 部署时填入上述 CDN 地址
+  </script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2563EB',
+            secondary: '#0F766E',
+            neutral: '#F8FAFC',
+            dark: '#1E293B',
+            accent: '#F97316',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .smooth-scroll { scroll-behavior: smooth; }
+      .model-container { height: 60vh; min-height: 350px; }
+      .video-container { aspect-ratio: 16/9; width: 100%; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .fade-in { animation: fadeIn 0.8s ease-in-out forwards; opacity: 0; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+      .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+      .qr-card { background: linear-gradient(135deg, #f0f9ff 0%, #e6fffa 100%); }
+      .timeline-line { @apply absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 bg-gray-200; }
+      .timeline-dot { @apply absolute left-1/2 top-4 w-4 h-4 rounded-full -translate-x-1/2 z-10; }
+      .timeline-content { @apply w-full md:w-[calc(50%-2rem)] p-4 rounded-lg bg-white shadow-sm; }
+      .doc-card { @apply cursor-pointer transition-all hover:bg-primary/5 border-l-4 border-transparent hover:border-primary; }
+      .exit-overlay { @apply fixed inset-0 bg-black/80 z-50 flex flex-col justify-center items-center text-white p-6; }
+    }
+  </style>
+</head>
+
+<body class="smooth-scroll bg-neutral text-dark font-sans m-0 p-0 overflow-x-hidden">
+  <!-- 1. 封面页 -->
+  <section id="cover" class="w-full h-screen bg-gradient-to-br from-primary/90 to-secondary/90 flex flex-col justify-center items-center text-white relative overflow-hidden">
+    <div class="absolute inset-0 bg-black/25 z-10"></div>
+    <div class="absolute top-20 left-10 w-16 h-16 rounded-full bg-white/10 blur-xl"></div>
+    <div class="absolute bottom-40 right-20 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
+    <div class="container mx-auto px-6 text-center z-20 fade-in" style="animation-delay: 0.2s">
+      <i class="fa fa-flask text-6xl mb-6 text-white/90"></i>
+      <h1 class="text-[clamp(2rem,6vw,4rem)] font-bold leading-tight mb-4">乙酰水杨酸AR虚仿实验</h1>
+      <p class="text-[clamp(1rem,2.5vw,1.25rem)] mb-8 max-w-3xl mx-auto">化学国家级实验教学示范中心（吉林大学） · 虚实融合数智化教学平台</p>
+      <a href="#main" class="bg-white text-primary px-8 py-3 rounded-full text-lg font-semibold hover:bg-neutral hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+        进入实验平台 <i class="fa fa-arrow-down ml-2"></i>
+      </a>
+    </div>
+    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20 animate-bounce">
+      <i class="fa fa-angle-down text-3xl"></i>
+    </div>
+  </section>
+
+  <!-- 固定导航栏 -->
+  <nav id="navbar" class="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50 py-3 px-6 hidden transition-all duration-300">
+    <div class="container mx-auto flex flex-wrap justify-center gap-4 md:gap-8">
+      <a href="#3d-models" class="text-dark hover:text-primary font-medium transition-colors"><i class="fa fa-cube mr-1"></i> 分子模型</a>
+      <a href="#video-history" class="text-dark hover:text-primary font-medium transition-colors"><i class="fa fa-play-circle mr-1"></i> 发展历程</a>
+      <a href="#experiment-operation" class="text-dark hover:text-primary font-medium transition-colors"><i class="fa fa-flask mr-1"></i> 实验操作</a>
+      <a href="#extensive-reading" class="text-dark hover:text-primary font-medium transition-colors"><i class="fa fa-book mr-1"></i> 扩展阅读</a>
+      <a href="#exit-app" class="text-dark hover:text-accent font-medium transition-colors"><i class="fa fa-sign-out mr-1"></i> 退出应用</a>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main id="main" class="container mx-auto px-6 py-16">
+    <!-- 2. 3D模型展示板块 -->
+    <section id="3d-models" class="mb-28 fade-in">
+      <div class="text-center mb-12">
+        <h2 class="text-[clamp(1.6rem,4vw,2.5rem)] font-bold mb-4 text-secondary"><i class="fa fa-cube text-primary mr-2"></i> 分子模型与AR展示</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto text-lg">查看水杨酸和乙酰水杨酸（阿司匹林）3D分子模型，扫描二维码体验AR虚仿实验</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <!-- 水杨酸模型 -->
+        <div class="lg:col-span-1 bg-white rounded-2xl shadow-md p-6 card-hover">
+          <h3 class="text-xl font-bold mb-4 text-primary text-center">水杨酸（C₇H₆O₃）分子模型</h3>
+          <div id="water-model" class="model-container border border-gray-200 rounded-xl bg-neutral relative overflow-hidden">
+            <div id="water-loading" class="absolute inset-0 flex justify-center items-center bg-white/80 z-10">
+              <div class="flex flex-col items-center">
+                <i class="fa fa-spinner fa-spin text-3xl text-primary mb-2"></i>
+                <p class="text-gray-600 text-sm">模型加载中...</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 text-center text-gray-500 text-sm">
+            <i class="fa fa-info-circle mr-1"></i> 拖拽旋转 | 滚轮缩放
+          </div>
+        </div>
+
+        <!-- 乙酰水杨酸分子模型 -->
+        <div class="lg:col-span-1 bg-white rounded-2xl shadow-md p-6 card-hover">
+          <h3 class="text-xl font-bold mb-4 text-primary text-center">乙酰水杨酸（C₉H₈O₄）分子模型</h3>
+          <div id="aspirin-model" class="model-container border border-gray-200 rounded-xl bg-neutral relative overflow-hidden">
+            <div id="aspirin-loading" class="absolute inset-0 flex justify-center items-center bg-white/80 z-10">
+              <div class="flex flex-col items-center">
+                <i class="fa fa-spinner fa-spin text-3xl text-primary mb-2"></i>
+                <p class="text-gray-600 text-sm">模型加载中...</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 text-center text-gray-500 text-sm">
+            <i class="fa fa-info-circle mr-1"></i> 拖拽旋转 | 滚轮缩放
+          </div>
+        </div>
+
+        <!-- AR展示二维码 -->
+        <div class="lg:col-span-1 qr-card rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center">
+          <h3 class="text-xl font-bold mb-6 text-secondary">AR虚仿实验体验</h3>
+          <div class="w-64 h-64 bg-white p-4 rounded-xl shadow-md mb-6">
+            <img id="qr-img" src="照片/乙酰水杨酸.glb.png" alt="AR虚仿实验二维码" class="w-full h-full object-contain">
+          </div>
+          <p class="text-gray-600 mb-4">扫描上方二维码，打开AR虚拟化学实验室</p>
+          <div class="flex items-center justify-center text-sm text-gray-500">
+            <i class="fa fa-mobile-phone text-2xl mr-2"></i>
+            <span>支持手机端AR扫描识别</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 乙酰水杨酸发展历程视频 -->
+    <section id="video-history" class="mb-28 fade-in">
+      <div class="text-center mb-12">
+        <h2 class="text-[clamp(1.6rem,4vw,2.5rem)] font-bold mb-4 text-secondary"><i class="fa fa-play-circle text-primary mr-2"></i> 乙酰水杨酸发展历程</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto text-lg">了解阿司匹林从发现到应用的演变过程，认识百年神药，学会有机化学合成实验操作</p>
+      </div>
+
+      <div class="max-w-4xl mx-auto">
+        <video id="history-video" class="video-container rounded-2xl shadow-lg object-cover border border-gray-200" controls preload="metadata" poster="照片/阿司匹林.jpg">
+          <source id="video-source" src="视频/阿司匹林.mp4" type="video/mp4">
+          你的浏览器不支持HTML5视频播放，请升级浏览器后重试
+        </video>
+        <div class="mt-4 text-center text-gray-500 text-sm">
+          <i class="fa fa-info-circle mr-1"></i> 视频内容：乙酰水杨酸的发现、合成工艺演变及教学应用
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 实验操作板块 -->
+    <section id="experiment-operation" class="mb-28 fade-in">
+      <div class="text-center mb-12">
+        <h2 class="text-[clamp(1.6rem,4vw,2.5rem)] font-bold mb-4 text-secondary"><i class="fa fa-flask text-primary mr-2"></i> 乙酰水杨酸制备实验操作</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto text-lg">基于经典有机合成实验，完整还原乙酰水杨酸（阿司匹林）制备全流程</p>
+      </div>
+
+      <!-- 中文实验内容 -->
+      <div class="max-w-5xl mx-auto mb-16 bg-white rounded-2xl shadow-md p-8 card-hover">
+        <h3 class="text-2xl font-bold text-secondary mb-8 text-center">【实验内容】</h3>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-bullseye mr-2"></i>实验目的</h4>
+          <ol class="text-gray-600 space-y-2 list-decimal list-inside pl-4">
+            <li>学习酰化反应的原理和阿司匹林的制备方法。</li>
+            <li>掌握有机合成中固体产物的分离、提纯方法，巩固重结晶和减压过滤基本操作。</li>
+            <li>学习通过测定熔点和化学试剂检测产品纯度的方法。</li>
+          </ol>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-book mr-2"></i>实验原理</h4>
+          <div class="text-gray-600 space-y-3 pl-4">
+            <p>阿司匹林即乙酰水杨酸，是销售最广泛的非处方药。它能退烧（解热），减轻疼痛（止痛药），减轻肿胀、酸痛和发红（消炎药）。尽管有副作用，阿司匹林仍然是目前最安全、最便宜和最有效的非处方药。</p>
+            <p>本实验以浓硫酸为催化剂，水杨酸与乙酸酐反应制备阿司匹林。副反应主要是酚羟基和羧基之间的脱水反应，当温度高于90℃时，分子间脱水加剧，从而生成不溶于水的聚合物。反应生成的粗制乙酰水杨酸含有未反应完的水杨酸以及一些相对分子质量较大的副产物，可采用醇-水混合溶剂进行重结晶提纯。或先在碱溶液中溶解酸，过滤除去不溶物后再酸化，使乙酰水杨酸重结晶析出。</p>
+            <p>由于很少量的酚羟基就能与Fe³⁺在水溶液中形成紫红色的配合物，所以用FeCl₃溶液检验乙酰水杨酸是否提纯是实验室最简单、常用的方法之一，有时也通过测定熔点来检测产物纯度。</p>
+          </div>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-flask mr-2"></i>实验仪器与材料</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pl-4">
+            <div>
+              <p class="font-medium mb-2">仪器：</p>
+              <ul class="text-gray-600 list-disc list-inside space-y-1">
+                <li>锥形瓶，烧杯，水浴锅</li>
+                <li>量筒，试管，熔点仪</li>
+                <li>电磁搅拌加热板</li>
+                <li>减压过滤装置</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium mb-2">材料：</p>
+              <ul class="text-gray-600 list-disc list-inside space-y-1">
+                <li>水杨酸，乙酸酐</li>
+                <li>浓硫酸，浓盐酸</li>
+                <li>碳酸氢钠，三氯化铁</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-list-ol mr-2"></i>实验步骤</h4>
+          <div class="text-gray-600 space-y-4 pl-4">
+            <div>
+              <p class="font-medium">1. 合成</p>
+              <p>水浴锅中装适量水，加热至80～90℃，作为反应水浴装置。在25 mL干燥的锥形瓶中加入2.0 g水杨酸和5 mL乙酸酐，然后加入4滴浓硫酸，充分振摇，放置于水浴中加热溶解后继续振摇8～10 min，然后将溶液倒入100 mL烧杯中，再加30 mL冰水冷却使结晶完全析出，减压过滤，用少量（约5 mL）蒸馏水洗涤固体两次。</p>
+            </div>
+            <div>
+              <p class="font-medium">2. 纯化</p>
+              <p>将过滤得到的粗品置于50 mL烧杯中，加入30 mL饱和碳酸氢钠溶液，充分搅拌后减压过滤除去不溶物。滤液用浓盐酸酸化后，有晶体析出，用冰水冷却使结晶析出完全。结晶经减压过滤、水洗、红外干燥后，即得纯乙酰水杨酸，称量，计算产率。</p>
+            </div>
+            <div>
+              <p class="font-medium">3. 产品纯度的检测</p>
+              <p>（1）取3支试管并编号，1号试管中放入少量水杨酸，2号试管中放入少量重结晶纯化后的产品，3号试管中放入少量乙酰水杨酸标准品。分别加入5 mL蒸馏水使样品完全溶解，然后分别滴入2～3滴1%三氯化铁溶液，观察现象并记录。</p>
+              <p>（2）产品干燥后研细，用熔点仪测定样品熔点。纯净乙酰水杨酸固体的熔点为135～136℃。</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-10 pt-6 border-t border-gray-200">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-question-circle mr-2"></i>实验思考题</h4>
+          <ol class="text-gray-600 space-y-3 list-decimal list-inside pl-2">
+            <li>实验中为何要使用干燥的锥形瓶？乙酸酐遇水会发生什么反应？</li>
+            <li>为什么用FeCl₃溶液能检测乙酰水杨酸的纯度？若出现紫红色说明什么问题？</li>
+            <li>反应温度控制在80~90℃的原因是什么？温度过高或过低会产生哪些影响？</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- 英文实验内容 -->
+      <div class="max-w-5xl mx-auto mb-16 bg-white rounded-2xl shadow-md p-8 card-hover">
+        <h3 class="text-2xl font-bold text-secondary mb-8 text-center">【Experiment Content】</h3>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-bullseye mr-2"></i>Objectives</h4>
+          <ol class="text-gray-600 space-y-2 list-decimal list-inside pl-4">
+            <li>To learn the method of preparing aspirin by acetylation reaction.</li>
+            <li>To master the techniques of separation and purification of solid products and familiarize the experimenter with the operation of recrystallization and vacuum filtration.</li>
+            <li>To learn the identification of the purity of the solid product by the determination of the melting points or some specific chemical reaction.</li>
+          </ol>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-book mr-2"></i>Principles</h4>
+          <div class="text-gray-600 space-y-3 pl-4">
+            <p>Aspirin，also known as acetylsalicylic acid，is the most widely sold over-the-counter drug. It has the ability to reduce fever（an antipyretic），to reduce pain（an analgesic），and to reduce swelling，soreness and redness（an anti-inflammatory agent）. Despite its side effects，aspirin remains the safest，cheapest and most effective non-prescription drug.</p>
+            <p>In this experiment，you will prepare aspirin by the reaction of salicylic acid with acetic anhydride，using concentrated sulfuric acid as a catalyst. The main side reaction is the dehydration reaction between the phenolic hydroxyl group and the carboxyl group. When the temperature is higher than 90℃，the intermolecular dehydration intensifies，resulting in water-insoluble polymers. The crude acetylsalicylic acid produced by the reaction contains unreacted salicylic acid and some by-products with high molecular weight. It can be purified by recrystallization with alcohol-water mixed solvent. Or dissolve acid in alkali solution first，remove insoluble matter by filtration and then acidify to make acetylsalicylic acid recrystallize and precipitate.</p>
+            <p>Phenols form a colored complex with the ferric ion. The purple-red color indicates the presence of a phenol group. Note the aspirin no longer has the phenol group and thus it is one of the simplest and commonly used methods in laboratories to test the purity of acetylsalicylic acid by FeCl₃ solution. Measuring the melting point of it can also be used to test the purity.</p>
+          </div>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-flask mr-2"></i>Apparatus and Materials</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pl-4">
+            <div>
+              <p class="font-medium mb-2">Apparatus：</p>
+              <ul class="text-gray-600 list-disc list-inside space-y-1">
+                <li>Erlenmeyer flask，beaker，water-bath</li>
+                <li>Measuring cylinder，test tube，melting point apparatus</li>
+                <li>Magnetic stirring electric heating plate</li>
+                <li>Vacuum filtration apparatus</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium mb-2">Materials：</p>
+              <ul class="text-gray-600 list-disc list-inside space-y-1">
+                <li>Salicylic acid，acetic anhydride</li>
+                <li>Concentrated sulfuric acid，concentrated hydrochloric acid</li>
+                <li>Sodium bicarbonate，iron trichloride</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="mb-8">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-list-ol mr-2"></i>Procedure</h4>
+          <div class="text-gray-600 space-y-4 pl-4">
+            <div>
+              <p class="font-medium">1. Preparation</p>
+              <p>Prepare a water bath at 80-90℃ for use. Weigh 2.0 g of salicylic acid，5 mL of acetic anhydride and place them in a dry 25 mL Erlenmeyer flask，and add 4 drops of concentrated sulfuric acid with constant swirling. Place the flask in the hot water bath for several minutes to dissolve solid material and wait with constant swirling for further 8-10 min to complete the reaction，and then pour the solution into a 100 mL beaker，add 30 mL ice-water to cool to induce crystallization，and collect the crystalline solid by vacuum filtration. Wash the solid twice with a small amount of distilled water（about 5 mL）.</p>
+            </div>
+            <div>
+              <p class="font-medium">2. Purification</p>
+              <p>Transfer your crude products to a 50 mL beaker and add 30 mL of saturated sodium bicarbonate solution. Swirl the solution to allow a complete neutralization between acids and sodium bicarbonate. After then，remove the insoluble substances by vacuum filtration. Pour all the filtrate to a clean beaker；add slowly concentrated hydrochloric acid into the solution with swirling the beaker until some crystalline solid comes out. Then place the beaker into an ice-water bath for complete crystallization. Collect the crystals by vacuum filtration. Dry the crystals under an infrared lamp. Weigh and calculate the yield.</p>
+            </div>
+            <div>
+              <p class="font-medium">3. Analysis of purity</p>
+              <p>（1）Label three test tubes：place a few crystals of salicylic acid into the first test tube，a few crystals of your product into the second test tube，and a small amount of commercial aspirin into the third test tube. Add 5 mL of distilled water to each test tube and swirl it to dissolve the crystals. Add 2-3 drops of 1% FeCl₃ to each test tube. Compare and record your observations.</p>
+              <p>（2）Place a few crystals of your product which is completely dried on a watch glass and which is ground into powder. Prepare 2 pieces of capillary melting tubes with your sample and determine the melting point by a melting point apparatus. The melting point of purified acetyl salicylic acid is 135-136℃.</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-10 pt-6 border-t border-gray-200">
+          <h4 class="text-xl font-semibold text-primary mb-4 flex items-center"><i class="fa fa-question-circle mr-2"></i>Thinking Questions</h4>
+          <ol class="text-gray-600 space-y-3 list-decimal list-inside pl-2">
+            <li>Why is a dry Erlenmeyer flask required in the experiment? What reaction occurs when acetic anhydride meets water?</li>
+            <li>Why can the purity of acetylsalicylic acid be detected by FeCl₃ solution? What does it mean if a purple-red color appears?</li>
+            <li>What is the reason for controlling the reaction temperature at 80~90℃? What are the effects of excessively high or low temperature?</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 扩展阅读板块 -->
+    <section id="extensive-reading" class="mb-28 fade-in">
+      <div class="text-center mb-12">
+        <h2 class="text-[clamp(1.6rem,4vw,2.5rem)] font-bold mb-4 text-secondary"><i class="fa fa-book text-primary mr-2"></i> 扩展阅读</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto text-lg">乙酰水杨酸相关研究文献，点击标题查看PDF文件</p>
+      </div>
+
+      <div class="max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 gap-4" id="pdf-links">
+          <a href="参考文献/1-阿司匹林的百年传奇.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">1-阿司匹林的百年传奇</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/2-不衰之柳__百年"神药"阿司匹林_苑腊静.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">2-不衰之柳__百年"神药"阿司匹林_苑腊静</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/3-国家基本药物之药品鉴宝_"百年神药"阿司匹林_蒲昭和.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">3-国家基本药物之药品鉴宝_"百年神药"阿司匹林_蒲昭和</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/4-阿司匹林：经典药物也有诸多禁忌_刘韬.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">4-阿司匹林：经典药物也有诸多禁忌_刘韬</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/5-大学有机化学"羧酸及其衍生物"的项目式教学——合成百年神药阿司匹林_罗亚.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">5-大学有机化学"羧酸及其衍生物"的项目式教学——合成百年神药阿司匹林_罗亚</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/6-乙酰水杨酸(阿司匹林)的制备及纯化实验教学研究_田德美.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">6-乙酰水杨酸(阿司匹林)的制备及纯化实验教学研究_田德美</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/7-以阿司匹林教学为例的"药物化学"五步教学法探究与实践_钟霞.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">7-以阿司匹林教学为例的"药物化学"五步教学法探究与实践_钟霞</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/8-经典实验改进与教学设计：乙酰水杨酸的制备_程绍玲.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">8-经典实验改进与教学设计：乙酰水杨酸的制备_程绍玲</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/9-有机化学课程思政教学实践_以有机化学史上几位著名的_霍夫曼_为例.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">9-有机化学课程思政教学实践_以有机化学史上几位著名的_霍夫曼_为例</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+          <a href="参考文献/10-药物化学"阿司匹林"的课程思政教学设计_刘慧娟.pdf" target="_blank" class="doc-card bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+            <p class="font-medium">10-药物化学"阿司匹林"的课程思政教学设计_刘慧娟</p>
+            <i class="fa fa-file-pdf-o text-red-500"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 退出应用板块 -->
+    <section id="exit-app" class="mb-16 text-center fade-in">
+      <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-md p-8">
+        <h2 class="text-[clamp(1.6rem,4vw,2.5rem)] font-bold mb-6 text-secondary"><i class="fa fa-sign-out text-primary mr-2"></i> 退出应用</h2>
+        <p class="text-gray-600 mb-8">感谢使用乙酰水杨酸AR虚仿实验教学平台，如需再次体验请刷新页面</p>
+        <button id="exit-btn" class="bg-accent text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-accent/90 hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+          确认退出 <i class="fa fa-sign-out ml-2"></i>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-dark text-white py-8 px-6">
+    <div class="container mx-auto text-center">
+      <p class="mb-4">版权归：化学国家级实验教学示范中心（吉林大学）</p>
+    </div>
+  </footer>
+
+  <script>
+    // 资源路径解析：支持本地相对路径与 GitHub 直链
+    function res(path) {
+      const base = (window.RESOURCE_BASE || '').replace(/\/$/, '');
+      const p = (path || '').replace(/^\.?\//, '');
+      return base ? (base + '/' + p) : p;
+    }
+
+    // 页面加载时应用资源路径（GitHub 直链时覆盖为 CDN 地址）
+    document.addEventListener('DOMContentLoaded', () => {
+      const base = (window.RESOURCE_BASE || '').trim();
+      if (base) {
+        document.getElementById('qr-img').src = res('照片/乙酰水杨酸.glb.png');
+        document.getElementById('history-video').poster = res('照片/阿司匹林.jpg');
+        document.getElementById('video-source').src = res('视频/阿司匹林.mp4');
+        document.querySelectorAll('#pdf-links a').forEach(a => {
+          a.href = res(a.getAttribute('href'));
+        });
+      }
+    });
+
+    // 导航栏滚动显示/隐藏
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 500) {
+        navbar.classList.remove('hidden');
+        navbar.classList.add('py-3');
+      } else {
+        navbar.classList.add('hidden');
+        navbar.classList.remove('py-3');
+      }
+    });
+
+    // 退出功能
+    const exitBtn = document.getElementById('exit-btn');
+    exitBtn.addEventListener('click', () => {
+      if (confirm('确定要退出实验平台吗？')) {
+        try {
+          window.close();
+          setTimeout(() => {
+            if (typeof window.closed === 'undefined' || !window.closed) {
+              const exitOverlay = document.createElement('div');
+              exitOverlay.className = 'exit-overlay';
+              exitOverlay.innerHTML = `
+                <div class="text-center max-w-md">
+                  <i class="fa fa-check-circle text-6xl text-green-400 mb-6"></i>
+                  <h2 class="text-3xl font-bold mb-4">已成功退出实验平台</h2>
+                  <p class="mb-8 text-lg">感谢您的使用！</p>
+                  <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button id="close-window-btn" class="bg-accent text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-accent/90 transition-all">
+                      关闭窗口 <i class="fa fa-times ml-2"></i>
+                    </button>
+                    <button id="back-home-btn" class="bg-primary text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-primary/90 transition-all">
+                      返回首页 <i class="fa fa-home ml-2"></i>
+                    </button>
+                  </div>
+                </div>
+              `;
+              document.body.appendChild(exitOverlay);
+              document.body.style.overflow = 'hidden';
+              document.getElementById('close-window-btn').addEventListener('click', () => window.close());
+              document.getElementById('back-home-btn').addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                document.body.removeChild(exitOverlay);
+                document.body.style.overflow = '';
+              });
+            }
+          }, 100);
+        } catch (e) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          alert('已退出实验平台，返回首页');
+        }
+      }
+    });
+
+    // 3D模型加载
+    function initModel(containerId, loadingId, modelPath) {
+      const container = document.getElementById(containerId);
+      const loading = document.getElementById(loadingId);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf8fafc);
+      const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.z = 5;
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(renderer.domElement);
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(5, 5, 5);
+      scene.add(directionalLight);
+      const loader = new THREE.GLTFLoader();
+      const url = (window.RESOURCE_BASE || '') ? res(modelPath) : modelPath;
+      loader.load(
+        url,
+        (gltf) => {
+          scene.add(gltf.scene);
+          loading.style.display = 'none';
+        },
+        (xhr) => {
+          if (xhr.total) loading.querySelector('p').textContent = `模型加载中... ${((xhr.loaded / xhr.total) * 100).toFixed(0)}%`;
+        },
+        (error) => {
+          console.error('模型加载失败:', error);
+          loading.querySelector('p').textContent = '模型加载失败，请刷新页面重试';
+          loading.querySelector('i').classList.remove('fa-spinner', 'fa-spin');
+          loading.querySelector('i').classList.add('fa-exclamation-circle');
+        }
+      );
+      window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    window.addEventListener('load', () => {
+      initModel('water-model', 'water-loading', '模型/水杨酸.glb');
+      initModel('aspirin-model', 'aspirin-loading', '模型/乙酰水杨酸.glb');
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const fadeElements = document.querySelectorAll('.fade-in');
+      fadeElements.forEach((el, index) => {
+        if (!el.style.animationDelay) el.style.animationDelay = `${0.2 + index * 0.2}s`;
+      });
+    });
+  </script>
+</body>
+</html>
